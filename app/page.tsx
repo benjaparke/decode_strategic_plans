@@ -126,14 +126,27 @@ export default function Home() {
 
         <div className="flex flex-wrap gap-3">
           <button disabled={!canRun || !!loading} onClick={async () => { setLoading("analyze"); try { setAnalyze(await postJson("/api/analyze", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl bg-accent px-5 py-3 font-medium text-white disabled:opacity-50">{loading === "analyze" ? "Analyzing..." : "Analyze Statement"}</button>
-          <select value={intent} onChange={(e) => setIntent(e.target.value)} className="rounded-xl border border-slate-300 px-4 py-3">
-            {intentOptions.map((opt) => <option key={opt}>{opt}</option>)}
-          </select>
-          <button disabled={!canRun || !!loading} onClick={async () => { setLoading("rewrite"); try { setRewrite(await postJson("/api/rewrite", { statement, intendedType: intent })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-slate-300 px-5 py-3 font-medium disabled:opacity-50">{loading === "rewrite" ? "Rewriting..." : "Rewrite as Selected Type"}</button>
-          <button disabled={!canRun || !!loading} onClick={async () => { setLoading("plan"); try { setPlan(await postJson("/api/build-plan", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-slate-300 px-5 py-3 font-medium disabled:opacity-50">{loading === "plan" ? "Building..." : "Build Full Workplan"}</button>
         </div>
+
+        {analyze && <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <h2 className="text-lg font-semibold">What did you intend this to be?</h2>
+          <div className="flex flex-wrap gap-3">
+            <select value={intent} onChange={(e) => setIntent(e.target.value)} className="rounded-xl border border-slate-300 px-4 py-3">
+              {intentOptions.map((opt) => <option key={opt}>{opt}</option>)}
+            </select>
+            <button disabled={!canRun || !!loading} onClick={async () => { setLoading("rewrite"); try { setRewrite(await postJson("/api/rewrite", { statement, intendedType: intent })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-slate-300 px-5 py-3 font-medium disabled:opacity-50">{loading === "rewrite" ? "Rewriting..." : "Rewrite as Selected Type"}</button>
+            <button disabled={!canRun || !!loading} onClick={async () => { setLoading("plan"); try { setPlan(await postJson("/api/build-plan", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-slate-300 px-5 py-3 font-medium disabled:opacity-50">{loading === "plan" ? "Building..." : "Build Full Workplan"}</button>
+          </div>
+        </section>}
         {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
       </section>
+
+      {rewrite && <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive">
+        <h2 className="text-xl font-semibold">Rewrite Suggestions ({rewrite.intended_type})</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => <article key={i} className="rounded-xl border border-slate-200 p-4"><p className="font-medium">{s.text}</p><p className="mt-2 text-sm text-slate-600">{s.why_it_works}</p><button onClick={() => copyText(s.text)} className="mt-3 text-sm text-accent">Copy</button></article>)}
+        </div>
+      </section>}
 
       {analyze && <section className="mt-8 grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive md:grid-cols-2">
         <div>
@@ -155,13 +168,6 @@ export default function Home() {
               </div>
             );
           })}
-        </div>
-      </section>}
-
-      {rewrite && <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive">
-        <h2 className="text-xl font-semibold">Rewrite Suggestions ({rewrite.intended_type})</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => <article key={i} className="rounded-xl border border-slate-200 p-4"><p className="font-medium">{s.text}</p><p className="mt-2 text-sm text-slate-600">{s.why_it_works}</p><button onClick={() => copyText(s.text)} className="mt-3 text-sm text-accent">Copy</button></article>)}
         </div>
       </section>}
 
