@@ -8,7 +8,7 @@ type AnalyzeResponse = {
   explanation: string;
   missing_elements: string[];
   possible_confusions: string[];
-  clarity_scores?: Record<string, number>;
+  clarity_scores?: Record<string, string | number | null | undefined>;
   clarity_notes?: Record<string, string>;
 };
 
@@ -34,6 +34,12 @@ const samples = [
 ];
 
 const intentOptions = ["Goal", "Objective", "Strategy", "Tactic/Action", "Measurable Outcome", "KPI/Metric"];
+
+function toSafeScore(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.min(5, Math.max(0, parsed));
+}
 
 export default function Home() {
   const [statement, setStatement] = useState("");
@@ -116,20 +122,23 @@ export default function Home() {
       {analyze && <section className="mt-8 grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive md:grid-cols-2">
         <div>
           <h2 className="text-xl font-semibold">Analysis</h2>
-          <p className="mt-3"><strong>Classification:</strong> {analyze.classification}</p>
-          <p><strong>Confidence:</strong> {analyze.confidence}</p>
-          <p className="mt-2 text-slate-700">{analyze.explanation}</p>
-          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">{analyze.missing_elements.map((m) => <li key={m}>{m}</li>)}</ul>
+          <p className="mt-3"><strong>Classification:</strong> {analyze.classification || "Not available"}</p>
+          <p><strong>Confidence:</strong> {analyze.confidence || "Not available"}</p>
+          <p className="mt-2 text-slate-700">{analyze.explanation || "No explanation provided."}</p>
+          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">{(analyze.missing_elements || []).map((m) => <li key={m}>{m}</li>)}</ul>
         </div>
         <div>
           <h3 className="text-lg font-semibold">Planning Clarity Check</h3>
-          {Object.entries(analyze.clarity_scores || {}).map(([key, score]) => (
-            <div key={key} className="mt-3">
-              <div className="mb-1 flex justify-between text-sm"><span>{key}</span><span>{score}/5</span></div>
-              <div className="h-2 rounded-full bg-slate-200"><div className="h-2 rounded-full bg-accent" style={{ width: `${(score / 5) * 100}%` }} /></div>
-              <p className="text-xs text-slate-500">{analyze.clarity_notes?.[key]}</p>
-            </div>
-          ))}
+          {Object.entries(analyze.clarity_scores || {}).map(([key, rawScore]) => {
+            const score = toSafeScore(rawScore);
+            return (
+              <div key={key} className="mt-3">
+                <div className="mb-1 flex justify-between text-sm"><span>{key}</span><span>{score}/5</span></div>
+                <div className="h-2 rounded-full bg-slate-200"><div className="h-2 rounded-full bg-accent" style={{ width: `${(score / 5) * 100}%` }} /></div>
+                <p className="text-xs text-slate-500">{analyze.clarity_notes?.[key] || ""}</p>
+              </div>
+            );
+          })}
         </div>
       </section>}
 
