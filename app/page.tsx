@@ -35,6 +35,22 @@ const samples = [
 
 const intentOptions = ["Goal", "Objective", "Strategy", "Tactic/Action", "Measurable Outcome", "KPI/Metric"];
 
+function toSafeArray<T>(value: unknown, isItem: (item: unknown) => item is T): T[] {
+  if (Array.isArray(value)) return value.filter(isItem);
+  if (isItem(value)) return [value];
+  return [];
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isSuggestion(value: unknown): value is { text: string; why_it_works: string } {
+  if (!value || typeof value !== "object") return false;
+  const suggestion = value as { text?: unknown; why_it_works?: unknown };
+  return typeof suggestion.text === "string" && typeof suggestion.why_it_works === "string";
+}
+
 function toSafeScore(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed)) return 0;
@@ -59,9 +75,9 @@ export default function Home() {
       "Workplan Clarifier Export",
       "",
       analyze ? `Classification: ${analyze.classification}\nConfidence: ${analyze.confidence}\nExplanation: ${analyze.explanation}` : "",
-      rewrite ? `\nRewrite Suggestions:\n${rewrite.suggestions.map((s, i) => `${i + 1}. ${s.text}\nWhy: ${s.why_it_works}`).join("\n\n")}` : "",
+      rewrite ? `\nRewrite Suggestions:\n${toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => `${i + 1}. ${s.text}\nWhy: ${s.why_it_works}`).join("\n\n")}` : "",
       plan
-        ? `\nFull Workplan:\nGoal: ${plan.goal}\nObjectives:\n- ${plan.objectives.join("\n- ")}\nStrategies:\n- ${plan.strategies.join("\n- ")}\nTactics:\n- ${plan.tactics.join("\n- ")}\nKPIs:\n- ${plan.kpis.join("\n- ")}`
+        ? `\nFull Workplan:\nGoal: ${plan.goal}\nObjectives:\n- ${toSafeArray(plan.objectives, isString).join("\n- ")}\nStrategies:\n- ${toSafeArray(plan.strategies, isString).join("\n- ")}\nTactics:\n- ${toSafeArray(plan.tactics, isString).join("\n- ")}\nKPIs:\n- ${toSafeArray(plan.kpis, isString).join("\n- ")}`
         : "",
     ].join("\n");
   }, [analyze, rewrite, plan]);
@@ -125,7 +141,7 @@ export default function Home() {
           <p className="mt-3"><strong>Classification:</strong> {analyze.classification || "Not available"}</p>
           <p><strong>Confidence:</strong> {analyze.confidence || "Not available"}</p>
           <p className="mt-2 text-slate-700">{analyze.explanation || "No explanation provided."}</p>
-          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">{(analyze.missing_elements || []).map((m) => <li key={m}>{m}</li>)}</ul>
+          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">{toSafeArray(analyze.missing_elements, isString).map((m) => <li key={m}>{m}</li>)}</ul>
         </div>
         <div>
           <h3 className="text-lg font-semibold">Planning Clarity Check</h3>
@@ -135,7 +151,7 @@ export default function Home() {
               <div key={key} className="mt-3">
                 <div className="mb-1 flex justify-between text-sm"><span>{key}</span><span>{score}/5</span></div>
                 <div className="h-2 rounded-full bg-slate-200"><div className="h-2 rounded-full bg-accent" style={{ width: `${(score / 5) * 100}%` }} /></div>
-                <p className="text-xs text-slate-500">{analyze.clarity_notes?.[key] || ""}</p>
+                <p className="text-xs text-slate-500">{toSafeArray(analyze.clarity_notes?.[key], isString).join(" ")}</p>
               </div>
             );
           })}
@@ -145,7 +161,7 @@ export default function Home() {
       {rewrite && <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive">
         <h2 className="text-xl font-semibold">Rewrite Suggestions ({rewrite.intended_type})</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {rewrite.suggestions.map((s, i) => <article key={i} className="rounded-xl border border-slate-200 p-4"><p className="font-medium">{s.text}</p><p className="mt-2 text-sm text-slate-600">{s.why_it_works}</p><button onClick={() => copyText(s.text)} className="mt-3 text-sm text-accent">Copy</button></article>)}
+          {toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => <article key={i} className="rounded-xl border border-slate-200 p-4"><p className="font-medium">{s.text}</p><p className="mt-2 text-sm text-slate-600">{s.why_it_works}</p><button onClick={() => copyText(s.text)} className="mt-3 text-sm text-accent">Copy</button></article>)}
         </div>
       </section>}
 
@@ -153,10 +169,10 @@ export default function Home() {
         <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">Full Workplan Builder</h2><button onClick={() => copyText(copyFull)} className="rounded-lg bg-accent px-3 py-2 text-sm text-white">Copy Full Plan</button></div>
         <div className="space-y-3">
           <Card title="Goal" items={[plan.goal]} />
-          <Card title="Objectives" items={plan.objectives} />
-          <Card title="Strategies" items={plan.strategies} />
-          <Card title="Tactics / Actions" items={plan.tactics} />
-          <Card title="KPIs / Measurable Outcomes" items={plan.kpis} />
+          <Card title="Objectives" items={toSafeArray(plan.objectives, isString)} />
+          <Card title="Strategies" items={toSafeArray(plan.strategies, isString)} />
+          <Card title="Tactics / Actions" items={toSafeArray(plan.tactics, isString)} />
+          <Card title="KPIs / Measurable Outcomes" items={toSafeArray(plan.kpis, isString)} />
         </div>
         <button onClick={downloadTxt} className="mt-4 text-sm text-accent">Download as .txt</button>
       </section>}
