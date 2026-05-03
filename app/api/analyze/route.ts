@@ -2,6 +2,63 @@ import { NextRequest, NextResponse } from "next/server";
 import { assertApiKey, openai } from "@/lib/openai";
 import { parseJsonObject } from "@/lib/json";
 
+const analyzeResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "classification",
+    "confidence",
+    "explanation",
+    "missing_elements",
+    "possible_confusions",
+    "clarity_scores",
+    "clarity_notes",
+  ],
+  properties: {
+    classification: { type: "string" },
+    confidence: { type: "string" },
+    explanation: { type: "string" },
+    missing_elements: { type: "string" },
+    possible_confusions: { type: "string" },
+    clarity_scores: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "Specificity",
+        "Measurability",
+        "Time-bound clarity",
+        "Actionability",
+        "Strategic alignment",
+      ],
+      properties: {
+        Specificity: { type: "string" },
+        Measurability: { type: "string" },
+        "Time-bound clarity": { type: "string" },
+        Actionability: { type: "string" },
+        "Strategic alignment": { type: "string" },
+      },
+    },
+    clarity_notes: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "Specificity",
+        "Measurability",
+        "Time-bound clarity",
+        "Actionability",
+        "Strategic alignment",
+      ],
+      properties: {
+        Specificity: { type: "string" },
+        Measurability: { type: "string" },
+        "Time-bound clarity": { type: "string" },
+        Actionability: { type: "string" },
+        "Strategic alignment": { type: "string" },
+      },
+    },
+  },
+} as const;
+
 export async function POST(req: NextRequest) {
   try {
     assertApiKey();
@@ -10,9 +67,25 @@ export async function POST(req: NextRequest) {
 
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",
+      text: {
+        format: {
+          type: "json_schema",
+          name: "analyze_statement_response",
+          schema: analyzeResponseSchema,
+          strict: true,
+        },
+      },
       input: [
-        { role: "system", content: "You are an expert in strategic planning. Classify the statement and explain clearly and neutrally." },
-        { role: "user", content: `Classify this statement: ${statement}\nReturn ONLY JSON with keys classification, confidence, explanation, missing_elements, possible_confusions, clarity_scores (object with Specificity, Measurability, Time-bound clarity, Actionability, Strategic alignment scored 0-5), clarity_notes (same keys with supportive phrases). Avoid negative words like bad/wrong/weak/confused.` }
+        {
+          role: "system",
+          content:
+            "You are an expert in strategic planning. Return ONLY valid JSON that matches the provided schema exactly. Every field value must be a string, including all clarity_scores values.",
+        },
+        {
+          role: "user",
+          content:
+            `Classify this statement: ${statement}\nUse supportive and neutral wording. Avoid negative words like bad/wrong/weak/confused.\nReturn ONLY JSON with keys classification, confidence, explanation, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
+        },
       ],
     });
 
