@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type AnalyzeResponse = {
   classification: string;
@@ -59,6 +59,7 @@ function toSafeScore(value: unknown): number {
 }
 
 export default function Home() {
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [statement, setStatement] = useState("");
   const [intent, setIntent] = useState(intentOptions[0]);
   const [analyze, setAnalyze] = useState<AnalyzeResponse | null>(null);
@@ -107,6 +108,17 @@ export default function Home() {
     return res.json();
   }
 
+  function handleClear() {
+    setStatement("");
+    setAnalyze(null);
+    setRewrite(null);
+    setPlan(null);
+    setIntent(intentOptions[0]);
+    setError(null);
+    setLoading(null);
+    inputRef.current?.focus();
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl p-6 md:p-10">
       <header className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-8 shadow-executive">
@@ -116,7 +128,7 @@ export default function Home() {
 
       <section className="space-y-6 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
         <label className="text-sm font-medium text-slate-800">Paste a planning statement</label>
-        <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={5} className="w-full rounded-xl border border-blue-200 bg-white p-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-500" />
+        <textarea ref={inputRef} value={statement} onChange={(e) => setStatement(e.target.value)} rows={5} className="w-full rounded-xl border border-blue-200 bg-white p-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-500" />
         <div className="flex flex-wrap gap-2">
           {samples.map((sample) => (
             <button key={sample} className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 transition hover:bg-blue-200" onClick={() => setStatement(sample)}>
@@ -127,6 +139,7 @@ export default function Home() {
 
         <div className="flex flex-wrap gap-3">
           <button disabled={!canRun || !!loading} onClick={async () => { setLoading("analyze"); try { setAnalyze(await postJson("/api/analyze", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl bg-blue-700 px-5 py-3 font-medium text-white transition hover:bg-blue-800 disabled:opacity-50">{loading === "analyze" ? "Analyzing..." : "Analyze Statement"}</button>
+          <button onClick={handleClear} className="rounded-xl border border-blue-300 bg-white px-5 py-3 font-medium text-blue-700 transition hover:bg-blue-100">Clear</button>
         </div>
 
         {analyze && <section className="space-y-3 rounded-xl border border-blue-200 bg-white p-4">
