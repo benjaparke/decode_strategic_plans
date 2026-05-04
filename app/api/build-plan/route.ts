@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",
       input: [
-        { role: "system", content: "Create a fully aligned workplan with goal, objectives, strategies, tactics, and KPIs that logically connect." },
+        { role: "system", content: "Create a fully aligned workplan with goal, strategies, tactics, and KPIs that logically connect." },
         { role: "user", content: `Build from: ${statement}. Return ONLY JSON with keys goal (string), objectives (2-3), strategies (2-3), tactics (4-6), kpis (4-6). Executive, practical, non-generic language.` }
       ],
     });
