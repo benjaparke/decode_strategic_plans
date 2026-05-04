@@ -7,6 +7,7 @@ const analyzeResponseSchema = {
   additionalProperties: false,
   required: [
     "classification",
+    "clarity_type",
     "confidence",
     "explanation",
     "missing_elements",
@@ -16,45 +17,18 @@ const analyzeResponseSchema = {
   ],
   properties: {
     classification: { type: "string" },
+    clarity_type: { type: "string" },
     confidence: { type: "string" },
     explanation: { type: "string" },
     missing_elements: { type: "string" },
     possible_confusions: { type: "string" },
     clarity_scores: {
       type: "object",
-      additionalProperties: false,
-      required: [
-        "Specificity",
-        "Measurability",
-        "Time-bound clarity",
-        "Actionability",
-        "Strategic alignment",
-      ],
-      properties: {
-        Specificity: { type: "string" },
-        Measurability: { type: "string" },
-        "Time-bound clarity": { type: "string" },
-        Actionability: { type: "string" },
-        "Strategic alignment": { type: "string" },
-      },
+      additionalProperties: { type: "string" },
     },
     clarity_notes: {
       type: "object",
-      additionalProperties: false,
-      required: [
-        "Specificity",
-        "Measurability",
-        "Time-bound clarity",
-        "Actionability",
-        "Strategic alignment",
-      ],
-      properties: {
-        Specificity: { type: "string" },
-        Measurability: { type: "string" },
-        "Time-bound clarity": { type: "string" },
-        Actionability: { type: "string" },
-        "Strategic alignment": { type: "string" },
-      },
+      additionalProperties: { type: "string" },
     },
   },
 } as const;
@@ -84,7 +58,62 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content:
-            `Classify this statement: ${statement}\nValid classifications: Goal, Strategy, Tactic/Action, KPI/Metric, Too Vague.\nIf the statement does not clearly fit one of the first four categories, classify it as Too Vague.\nUse supportive and neutral wording. Avoid negative words like bad/wrong/weak/confused.\nReturn ONLY JSON with keys classification, confidence, explanation, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
+            `Analyze this statement: ${statement}
+
+Step 1: Determine classification first using one of:
+- Goal
+- Strategy
+- Tactic/Action
+- KPI/Metric
+- Too Vague
+
+If the statement does not clearly fit Goal, Strategy, Tactic/Action, or KPI/Metric, classify it as Too Vague.
+
+Step 2: Set clarity_type from the detected classification using exactly one of:
+- Goal
+- Strategy
+- Action
+- KPI
+
+Map Tactic/Action to Action.
+Map KPI/Metric to KPI.
+If classification is Too Vague, choose the closest likely type and set clarity_type accordingly.
+
+Step 3: Create type-specific clarity_scores and clarity_notes.
+Use only these criteria for each type:
+
+GOAL:
+- Outcome clarity
+- Directional strength
+- Scope clarity
+- Strategic relevance
+Do NOT evaluate tactics, execution steps, or detailed metrics.
+
+STRATEGY:
+- Approach clarity
+- Alignment to outcome
+- Focus
+- Distinctiveness
+
+ACTION:
+- Specificity
+- Executability
+- Clarity of outcome
+- Scope
+
+KPI:
+- Measurability
+- Clarity
+- Relevance
+- Trackability
+
+Scoring rules:
+- clarity_scores values must be strings representing 0-5 numbers.
+- clarity_notes values must be short, supportive, context-aware coaching notes.
+- Tone must be supportive and neutral.
+- Do not imply something is missing when it is not appropriate for that type.
+
+Return ONLY JSON with keys classification, clarity_type, confidence, explanation, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
         },
       ],
     });
