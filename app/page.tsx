@@ -159,7 +159,7 @@ export default function Home() {
       </header>
 
       <section className="space-y-6 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
-        <label className="text-sm font-medium text-slate-800">Paste a planning statement</label>
+        <label className="text-sm font-medium text-slate-800">Paste a planning statement or choose an example below:</label>
         <textarea ref={inputRef} value={statement} onChange={(e) => setStatement(e.target.value)} rows={5} className="w-full rounded-xl border border-blue-200 bg-white p-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-500" />
         <div className="flex flex-wrap gap-2">
           {samples.map((sample) => (
