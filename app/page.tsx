@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 type AnalyzeResponse = {
   classification: string;
+  clarity_type?: string;
   confidence: string;
   explanation: string;
   missing_elements: string[];
@@ -157,7 +158,7 @@ export default function Home() {
           <ul className="mt-3 list-disc pl-5 text-sm text-slate-800">{toSafeArray(analyze.missing_elements, isString).map((m) => <li key={m}>{m}</li>)}</ul>
         </div>
         <div>
-          <h3 className="border-b border-blue-100 pb-2 text-xl font-semibold text-blue-800">Planning Clarity Check</h3>
+          <h3 className="border-b border-blue-100 pb-2 text-xl font-semibold text-blue-800">{`${analyze.clarity_type || "Planning"} Clarity Check`}</h3>
           {Object.entries(analyze.clarity_scores || {}).map(([key, rawScore]) => {
             const score = toSafeScore(rawScore);
             return (
