@@ -2,37 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { assertApiKey, openai } from "@/lib/openai";
 import { parseJsonObject } from "@/lib/json";
 
+const analyzeResponseSchemaProperties = {
+  classification: { type: "string" },
+  clarity_type: { type: "string" },
+  confidence: { type: "string" },
+  explanation: { type: "string" },
+  insight: { type: "string" },
+  missing_elements: { type: "string" },
+  possible_confusions: { type: "string" },
+  clarity_scores: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: { type: "string" },
+  },
+  clarity_notes: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: { type: "string" },
+  },
+} as const;
+
 const analyzeResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: [
-    "classification",
-    "clarity_type",
-    "confidence",
-    "explanation",
-    "insight",
-    "missing_elements",
-    "possible_confusions",
-    "clarity_scores",
-    "clarity_notes",
-  ],
-  properties: {
-    classification: { type: "string" },
-    clarity_type: { type: "string" },
-    confidence: { type: "string" },
-    explanation: { type: "string" },
-    insight: { type: "string" },
-    missing_elements: { type: "string" },
-    possible_confusions: { type: "string" },
-    clarity_scores: {
-      type: "object",
-      additionalProperties: { type: "string" },
-    },
-    clarity_notes: {
-      type: "object",
-      additionalProperties: { type: "string" },
-    },
-  },
+  properties: analyzeResponseSchemaProperties,
+  required: Object.keys(analyzeResponseSchemaProperties),
 } as const;
 
 export async function POST(req: NextRequest) {
