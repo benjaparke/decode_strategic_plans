@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content:
-            `Classify this statement: ${statement}\nUse supportive and neutral wording. Avoid negative words like bad/wrong/weak/confused.\nReturn ONLY JSON with keys classification, confidence, explanation, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
+            `Classify this statement: ${statement}\nValid classifications: Goal, Strategy, Tactic/Action, KPI/Metric, Too Vague.\nIf the statement does not clearly fit one of the first four categories, classify it as Too Vague.\nUse supportive and neutral wording. Avoid negative words like bad/wrong/weak/confused.\nReturn ONLY JSON with keys classification, confidence, explanation, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
         },
       ],
     });

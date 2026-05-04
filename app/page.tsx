@@ -33,7 +33,7 @@ const samples = [
   "Improve internal communication",
 ];
 
-const intentOptions = ["Goal", "Objective", "Strategy", "Tactic/Action", "Measurable Outcome", "KPI/Metric"];
+const intentOptions = ["Goal", "Strategy", "Tactic/Action", "KPI/Metric", "Too Vague"];
 
 function toSafeArray<T>(value: unknown, isItem: (item: unknown) => item is T): T[] {
   if (Array.isArray(value)) return value.filter(isItem);
@@ -77,7 +77,7 @@ export default function Home() {
       analyze ? `Classification: ${analyze.classification}\nConfidence: ${analyze.confidence}\nExplanation: ${analyze.explanation}` : "",
       rewrite ? `\nRewrite Suggestions:\n${toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => `${i + 1}. ${s.text}\nWhy: ${s.why_it_works}`).join("\n\n")}` : "",
       plan
-        ? `\nFull Workplan:\nGoal: ${plan.goal}\nObjectives:\n- ${toSafeArray(plan.objectives, isString).join("\n- ")}\nStrategies:\n- ${toSafeArray(plan.strategies, isString).join("\n- ")}\nTactics:\n- ${toSafeArray(plan.tactics, isString).join("\n- ")}\nKPIs:\n- ${toSafeArray(plan.kpis, isString).join("\n- ")}`
+        ? `\nFull Workplan:\nGoal: ${plan.goal}\nStrategies:\n- ${toSafeArray(plan.strategies, isString).join("\n- ")}\nTactics:\n- ${toSafeArray(plan.tactics, isString).join("\n- ")}\nKPIs:\n- ${toSafeArray(plan.kpis, isString).join("\n- ")}`
         : "",
     ].join("\n");
   }, [analyze, rewrite, plan]);
@@ -175,10 +175,9 @@ export default function Home() {
         <div className="mb-4 flex items-center justify-between"><h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Full Workplan Builder</h2><button onClick={() => copyText(copyFull)} className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white transition duration-200 hover:bg-blue-800">Copy Full Plan</button></div>
         <div className="space-y-3">
           <Card title="Goal" items={[plan.goal]} />
-          <Card title="Objectives" items={toSafeArray(plan.objectives, isString)} />
           <Card title="Strategies" items={toSafeArray(plan.strategies, isString)} />
           <Card title="Tactics / Actions" items={toSafeArray(plan.tactics, isString)} />
-          <Card title="KPIs / Measurable Outcomes" items={toSafeArray(plan.kpis, isString)} />
+          <Card title="KPIs / Metrics" items={toSafeArray(plan.kpis, isString)} />
         </div>
         <button onClick={downloadTxt} className="mt-4 text-sm font-medium text-blue-700 transition duration-200 hover:text-blue-800">Download as .txt</button>
       </section>}
