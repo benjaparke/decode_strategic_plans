@@ -10,6 +10,7 @@ const analyzeResponseSchema = {
     "clarity_type",
     "confidence",
     "explanation",
+    "insight",
     "missing_elements",
     "possible_confusions",
     "clarity_scores",
@@ -20,6 +21,7 @@ const analyzeResponseSchema = {
     clarity_type: { type: "string" },
     confidence: { type: "string" },
     explanation: { type: "string" },
+    insight: { type: "string" },
     missing_elements: { type: "string" },
     possible_confusions: { type: "string" },
     clarity_scores: {
@@ -113,7 +115,7 @@ Scoring rules:
 - Tone must be supportive and neutral.
 - Do not imply something is missing when it is not appropriate for that type.
 
-Return ONLY JSON with keys classification, clarity_type, confidence, explanation, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
+Return ONLY JSON with keys classification, clarity_type, confidence, explanation, insight, missing_elements, possible_confusions, clarity_scores, clarity_notes.`,
         },
       ],
     });
