@@ -26,6 +26,14 @@ type PlanResponse = {
   kpis: string[];
 };
 
+type WorkplanType = "Goal" | "Strategy" | "Action" | "KPI";
+
+type SavedWorkplanItem = {
+  id: string;
+  type: WorkplanType;
+  text: string;
+};
+
 const samples = [
   "Become the #1 seller in our industry",
   "Leverage marketing data to better target ages 25–35",
@@ -35,6 +43,7 @@ const samples = [
 ];
 
 const intentOptions = ["Goal", "Strategy", "Tactic/Action", "KPI/Metric", "Too Vague"];
+const workplanTypeOrder: WorkplanType[] = ["Goal", "Strategy", "Action", "KPI"];
 
 function toSafeArray<T>(value: unknown, isItem: (item: unknown) => item is T): T[] {
   if (Array.isArray(value)) return value.filter(isItem);
@@ -58,6 +67,14 @@ function toSafeScore(value: unknown): number {
   return Math.min(5, Math.max(0, parsed));
 }
 
+function mapIntentToWorkplanType(value?: string): WorkplanType {
+  const normalized = value?.toLowerCase() || "";
+  if (normalized.includes("goal")) return "Goal";
+  if (normalized.includes("strategy")) return "Strategy";
+  if (normalized.includes("kpi") || normalized.includes("metric")) return "KPI";
+  return "Action";
+}
+
 export default function Home() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [statement, setStatement] = useState("");
@@ -65,10 +82,20 @@ export default function Home() {
   const [analyze, setAnalyze] = useState<AnalyzeResponse | null>(null);
   const [rewrite, setRewrite] = useState<RewriteResponse | null>(null);
   const [plan, setPlan] = useState<PlanResponse | null>(null);
+  const [savedWorkplanItems, setSavedWorkplanItems] = useState<SavedWorkplanItem[]>([]);
   const [loading, setLoading] = useState<"analyze" | "rewrite" | "plan" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canRun = statement.trim().length > 0;
+
+  const groupedSavedItems = useMemo(() => {
+    return {
+      Goal: savedWorkplanItems.filter((item) => item.type === "Goal"),
+      Strategy: savedWorkplanItems.filter((item) => item.type === "Strategy"),
+      Action: savedWorkplanItems.filter((item) => item.type === "Action"),
+      KPI: savedWorkplanItems.filter((item) => item.type === "KPI"),
+    };
+  }, [savedWorkplanItems]);
 
   const copyText = async (text: string) => navigator.clipboard.writeText(text);
 
@@ -119,6 +146,11 @@ export default function Home() {
     inputRef.current?.focus();
   }
 
+  function handleAddToWorkplan(text: string) {
+    const type = mapIntentToWorkplanType(rewrite?.intended_type || intent);
+    setSavedWorkplanItems((current) => [{ id: `${Date.now()}-${Math.random()}`, type, text }, ...current].sort((a, b) => workplanTypeOrder.indexOf(a.type) - workplanTypeOrder.indexOf(b.type)));
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl p-6 md:p-10">
       <header className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-8 shadow-executive">
@@ -149,7 +181,6 @@ export default function Home() {
               {intentOptions.map((opt) => <option key={opt}>{opt}</option>)}
             </select>
             <button disabled={!canRun || !!loading} onClick={async () => { setLoading("rewrite"); try { setRewrite(await postJson("/api/rewrite", { statement, intendedType: intent })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-blue-600 px-5 py-3 font-medium text-blue-700 transition duration-200 hover:bg-blue-50 disabled:opacity-50">{loading === "rewrite" ? "Rewriting..." : "Rewrite as Selected Type"}</button>
-            <button disabled={!canRun || !!loading} onClick={async () => { setLoading("plan"); try { setPlan(await postJson("/api/build-plan", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-blue-600 px-5 py-3 font-medium text-blue-700 transition duration-200 hover:bg-blue-50 disabled:opacity-50">{loading === "plan" ? "Building..." : "Build Full Workplan"}</button>
           </div>
         </section>}
         {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
@@ -158,7 +189,7 @@ export default function Home() {
       {rewrite && <section className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
         <h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Rewrite Suggestions <span className="rounded-md bg-amber-100 px-2 py-0.5 text-amber-500">({rewrite.intended_type})</span></h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => <article key={i} className="rounded-xl border border-blue-200 bg-white p-4"><p className="font-medium text-slate-900">{s.text}</p><p className="mt-2 text-sm text-slate-700">{s.why_it_works}</p><button onClick={() => copyText(s.text)} className="mt-3 text-sm font-medium text-blue-700 hover:text-blue-800">Copy</button></article>)}
+          {toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => <article key={i} className="rounded-xl border border-blue-200 bg-white p-4"><p className="font-medium text-slate-900">{s.text}</p><p className="mt-2 text-sm text-slate-700">{s.why_it_works}</p><div className="mt-3 flex items-center gap-3"><button onClick={() => copyText(s.text)} className="text-sm font-medium text-blue-700 hover:text-blue-800">Copy</button><button onClick={() => handleAddToWorkplan(s.text)} className="text-sm font-medium text-amber-500 hover:text-amber-600">Add to Workplan</button></div></article>)}
         </div>
       </section>}
 
@@ -185,6 +216,23 @@ export default function Home() {
         </div>
       </section>}
 
+      {savedWorkplanItems.length > 0 && <section className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Workplan Builder</h2>
+          <div className="flex gap-2">
+            <button onClick={() => setSavedWorkplanItems([])} className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-700 transition hover:bg-blue-100">Clear Plan</button>
+            <button disabled={savedWorkplanItems.length < 3 || !!loading} onClick={async () => { setLoading("plan"); try { setPlan(await postJson("/api/build-plan", { statement, savedItems: { goal: groupedSavedItems.Goal.map((item) => item.text), strategies: groupedSavedItems.Strategy.map((item) => item.text), actions: groupedSavedItems.Action.map((item) => item.text), kpis: groupedSavedItems.KPI.map((item) => item.text) } })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white transition duration-200 hover:bg-blue-800 disabled:opacity-50">{loading === "plan" ? "Building..." : "Build Workplan"}</button>
+          </div>
+        </div>
+        {savedWorkplanItems.length < 3 && <p className="mb-3 text-sm text-slate-600">Add at least 3 items to build a more targeted workplan.</p>}
+        <div className="space-y-3">
+          <SavedItemsCard title="Goal" items={groupedSavedItems.Goal} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+          <SavedItemsCard title="Strategies" items={groupedSavedItems.Strategy} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+          <SavedItemsCard title="Actions" items={groupedSavedItems.Action} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+          <SavedItemsCard title="KPIs" items={groupedSavedItems.KPI} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+        </div>
+      </section>}
+
       {plan && <section className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
         <div className="mb-4 flex items-center justify-between"><h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Full Workplan Builder</h2><button onClick={() => copyText(copyFull)} className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white transition duration-200 hover:bg-blue-800">Copy Full Plan</button></div>
         <div className="space-y-3">
@@ -201,4 +249,8 @@ export default function Home() {
 
 function Card({ title, items }: { title: string; items: string[] }) {
   return <section className="rounded-xl border border-blue-200 bg-white p-4"><h3 className="border-b border-blue-100 pb-1 text-lg font-semibold text-amber-500">{title}</h3><ul className="mt-2 list-disc pl-5 text-slate-900">{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
+}
+
+function SavedItemsCard({ title, items, onRemove }: { title: string; items: SavedWorkplanItem[]; onRemove: (id: string) => void }) {
+  return <section className="rounded-xl border border-blue-200 bg-white p-4"><h3 className="border-b border-blue-100 pb-1 text-lg font-semibold text-amber-500">{title}</h3>{items.length === 0 ? <p className="mt-2 text-sm text-slate-500">No items added yet.</p> : <ul className="mt-2 space-y-2 text-slate-900">{items.map((item) => <li key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-blue-100 px-3 py-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{item.type}</p><p>{item.text}</p></div><button onClick={() => onRemove(item.id)} className="text-sm text-blue-700 hover:text-blue-800">Remove</button></li>)}</ul>}</section>;
 }
