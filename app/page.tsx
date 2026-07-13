@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type AnalyzeResponse = {
   classification: string;
+  clarity_type?: string;
   confidence: string;
   explanation: string;
   missing_elements: string[];
   possible_confusions: string[];
-  clarity_scores?: Record<string, number>;
+  clarity_scores?: Record<string, string | number | null | undefined>;
   clarity_notes?: Record<string, string>;
 };
 
@@ -25,6 +26,14 @@ type PlanResponse = {
   kpis: string[];
 };
 
+type WorkplanType = "Goal" | "Strategy" | "Action" | "KPI";
+
+type SavedWorkplanItem = {
+  id: string;
+  type: WorkplanType;
+  text: string;
+};
+
 const samples = [
   "Become the #1 seller in our industry",
   "Leverage marketing data to better target ages 25–35",
@@ -33,29 +42,71 @@ const samples = [
   "Improve internal communication",
 ];
 
-const intentOptions = ["Goal", "Objective", "Strategy", "Tactic/Action", "Measurable Outcome", "KPI/Metric"];
+const intentOptions = ["Goal", "Strategy", "Tactic/Action", "KPI/Metric", "Too Vague"];
+const workplanTypeOrder: WorkplanType[] = ["Goal", "Strategy", "Action", "KPI"];
+
+function toSafeArray<T>(value: unknown, isItem: (item: unknown) => item is T): T[] {
+  if (Array.isArray(value)) return value.filter(isItem);
+  if (isItem(value)) return [value];
+  return [];
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isSuggestion(value: unknown): value is { text: string; why_it_works: string } {
+  if (!value || typeof value !== "object") return false;
+  const suggestion = value as { text?: unknown; why_it_works?: unknown };
+  return typeof suggestion.text === "string" && typeof suggestion.why_it_works === "string";
+}
+
+function toSafeScore(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.min(5, Math.max(0, parsed));
+}
+
+function mapIntentToWorkplanType(value?: string): WorkplanType {
+  const normalized = value?.toLowerCase() || "";
+  if (normalized.includes("goal")) return "Goal";
+  if (normalized.includes("strategy")) return "Strategy";
+  if (normalized.includes("kpi") || normalized.includes("metric")) return "KPI";
+  return "Action";
+}
 
 export default function Home() {
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [statement, setStatement] = useState("");
   const [intent, setIntent] = useState(intentOptions[0]);
   const [analyze, setAnalyze] = useState<AnalyzeResponse | null>(null);
   const [rewrite, setRewrite] = useState<RewriteResponse | null>(null);
   const [plan, setPlan] = useState<PlanResponse | null>(null);
+  const [savedWorkplanItems, setSavedWorkplanItems] = useState<SavedWorkplanItem[]>([]);
   const [loading, setLoading] = useState<"analyze" | "rewrite" | "plan" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canRun = statement.trim().length > 0;
 
+  const groupedSavedItems = useMemo(() => {
+    return {
+      Goal: savedWorkplanItems.filter((item) => item.type === "Goal"),
+      Strategy: savedWorkplanItems.filter((item) => item.type === "Strategy"),
+      Action: savedWorkplanItems.filter((item) => item.type === "Action"),
+      KPI: savedWorkplanItems.filter((item) => item.type === "KPI"),
+    };
+  }, [savedWorkplanItems]);
+
   const copyText = async (text: string) => navigator.clipboard.writeText(text);
 
   const copyFull = useMemo(() => {
     return [
-      "Workplan Clarifier Export",
+      "Strategic Clarity Export",
       "",
       analyze ? `Classification: ${analyze.classification}\nConfidence: ${analyze.confidence}\nExplanation: ${analyze.explanation}` : "",
-      rewrite ? `\nRewrite Suggestions:\n${rewrite.suggestions.map((s, i) => `${i + 1}. ${s.text}\nWhy: ${s.why_it_works}`).join("\n\n")}` : "",
+      rewrite ? `\nRewrite Suggestions:\n${toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => `${i + 1}. ${s.text}\nWhy: ${s.why_it_works}`).join("\n\n")}` : "",
       plan
-        ? `\nFull Workplan:\nGoal: ${plan.goal}\nObjectives:\n- ${plan.objectives.join("\n- ")}\nStrategies:\n- ${plan.strategies.join("\n- ")}\nTactics:\n- ${plan.tactics.join("\n- ")}\nKPIs:\n- ${plan.kpis.join("\n- ")}`
+        ? `\nFull Workplan:\nGoal: ${plan.goal}\nStrategies:\n- ${toSafeArray(plan.strategies, isString).join("\n- ")}\nTactics:\n- ${toSafeArray(plan.tactics, isString).join("\n- ")}\nKPIs:\n- ${toSafeArray(plan.kpis, isString).join("\n- ")}`
         : "",
     ].join("\n");
   }, [analyze, rewrite, plan]);
@@ -65,7 +116,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "workplan-clarifier.txt";
+    link.download = "strategic-clarity-plan.txt";
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -84,77 +135,122 @@ export default function Home() {
     return res.json();
   }
 
+  function handleClear() {
+    setStatement("");
+    setAnalyze(null);
+    setRewrite(null);
+    setPlan(null);
+    setIntent(intentOptions[0]);
+    setError(null);
+    setLoading(null);
+    inputRef.current?.focus();
+  }
+
+  function handleAddToWorkplan(text: string) {
+    const type = mapIntentToWorkplanType(rewrite?.intended_type || intent);
+    setSavedWorkplanItems((current) => [{ id: `${Date.now()}-${Math.random()}`, type, text }, ...current].sort((a, b) => workplanTypeOrder.indexOf(a.type) - workplanTypeOrder.indexOf(b.type)));
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl p-6 md:p-10">
-      <header className="mb-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-executive">
-        <h1 className="text-4xl font-semibold tracking-tight">Workplan Clarifier</h1>
-        <p className="mt-2 text-lg text-slate-600">Turn unclear planning language into structured goals, strategies, and measurable outcomes.</p>
+      <header className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-8 shadow-executive">
+        <h1 className="text-4xl font-semibold tracking-tight text-blue-900">Strategic Clarity</h1>
+        <p className="mt-2 text-lg text-slate-700">Turn vague planning language into structured, actionable plans</p>
       </header>
 
-      <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive">
-        <label className="text-sm font-medium text-slate-700">Paste a planning statement</label>
-        <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={5} className="w-full rounded-xl border border-slate-300 p-4 outline-none ring-accent focus:ring" />
+      <section className="space-y-6 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
+        <label className="text-sm font-medium text-slate-800">Paste a planning statement or choose an example below:</label>
+        <textarea ref={inputRef} value={statement} onChange={(e) => setStatement(e.target.value)} rows={5} className="w-full rounded-xl border border-blue-200 bg-white p-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-500" />
         <div className="flex flex-wrap gap-2">
           {samples.map((sample) => (
-            <button key={sample} className="rounded-full bg-accent/10 px-3 py-1 text-sm text-accent" onClick={() => setStatement(sample)}>
+            <button key={sample} className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 transition hover:bg-blue-200" onClick={() => setStatement(sample)}>
               {sample}
             </button>
           ))}
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button disabled={!canRun || !!loading} onClick={async () => { setLoading("analyze"); try { setAnalyze(await postJson("/api/analyze", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl bg-accent px-5 py-3 font-medium text-white disabled:opacity-50">{loading === "analyze" ? "Analyzing..." : "Analyze Statement"}</button>
-          <select value={intent} onChange={(e) => setIntent(e.target.value)} className="rounded-xl border border-slate-300 px-4 py-3">
-            {intentOptions.map((opt) => <option key={opt}>{opt}</option>)}
-          </select>
-          <button disabled={!canRun || !!loading} onClick={async () => { setLoading("rewrite"); try { setRewrite(await postJson("/api/rewrite", { statement, intendedType: intent })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-slate-300 px-5 py-3 font-medium disabled:opacity-50">{loading === "rewrite" ? "Rewriting..." : "Rewrite as Selected Type"}</button>
-          <button disabled={!canRun || !!loading} onClick={async () => { setLoading("plan"); try { setPlan(await postJson("/api/build-plan", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-slate-300 px-5 py-3 font-medium disabled:opacity-50">{loading === "plan" ? "Building..." : "Build Full Workplan"}</button>
+          <button disabled={!canRun || !!loading} onClick={async () => { setLoading("analyze"); try { setAnalyze(await postJson("/api/analyze", { statement })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl bg-blue-700 px-5 py-3 font-medium text-white transition hover:bg-blue-800 disabled:opacity-50">{loading === "analyze" ? "Analyzing..." : "Analyze Statement"}</button>
+          <button onClick={handleClear} className="rounded-xl border border-blue-300 bg-white px-5 py-3 font-medium text-blue-700 transition hover:bg-blue-100">Clear</button>
         </div>
+
+        {analyze && <section className="space-y-3 rounded-xl border border-blue-200 bg-white p-4">
+          <h2 className="border-b border-blue-100 pb-2 text-xl font-semibold text-amber-400">What did you intend this to be?</h2>
+          <div className="flex flex-wrap gap-3">
+            <select value={intent} onChange={(e) => setIntent(e.target.value)} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-slate-900">
+              {intentOptions.map((opt) => <option key={opt}>{opt}</option>)}
+            </select>
+            <button disabled={!canRun || !!loading} onClick={async () => { setLoading("rewrite"); try { setRewrite(await postJson("/api/rewrite", { statement, intendedType: intent })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-xl border border-blue-600 px-5 py-3 font-medium text-blue-700 transition duration-200 hover:bg-blue-50 disabled:opacity-50">{loading === "rewrite" ? "Rewriting..." : "Rewrite as Selected Type"}</button>
+          </div>
+        </section>}
         {error && <p className="rounded-lg bg-red-50 p-3 text-red-700">{error}</p>}
       </section>
 
-      {analyze && <section className="mt-8 grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive md:grid-cols-2">
-        <div>
-          <h2 className="text-xl font-semibold">Analysis</h2>
-          <p className="mt-3"><strong>Classification:</strong> {analyze.classification}</p>
-          <p><strong>Confidence:</strong> {analyze.confidence}</p>
-          <p className="mt-2 text-slate-700">{analyze.explanation}</p>
-          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">{analyze.missing_elements.map((m) => <li key={m}>{m}</li>)}</ul>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold">Planning Clarity Check</h3>
-          {Object.entries(analyze.clarity_scores || {}).map(([key, score]) => (
-            <div key={key} className="mt-3">
-              <div className="mb-1 flex justify-between text-sm"><span>{key}</span><span>{score}/5</span></div>
-              <div className="h-2 rounded-full bg-slate-200"><div className="h-2 rounded-full bg-accent" style={{ width: `${(score / 5) * 100}%` }} /></div>
-              <p className="text-xs text-slate-500">{analyze.clarity_notes?.[key]}</p>
-            </div>
-          ))}
-        </div>
-      </section>}
-
-      {rewrite && <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive">
-        <h2 className="text-xl font-semibold">Rewrite Suggestions ({rewrite.intended_type})</h2>
+      {rewrite && <section className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
+        <h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Rewrite Suggestions <span className="rounded-md bg-amber-100 px-2 py-0.5 text-amber-500">({rewrite.intended_type})</span></h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {rewrite.suggestions.map((s, i) => <article key={i} className="rounded-xl border border-slate-200 p-4"><p className="font-medium">{s.text}</p><p className="mt-2 text-sm text-slate-600">{s.why_it_works}</p><button onClick={() => copyText(s.text)} className="mt-3 text-sm text-accent">Copy</button></article>)}
+          {toSafeArray(rewrite.suggestions, isSuggestion).map((s, i) => <article key={i} className="rounded-xl border border-blue-200 bg-white p-4"><p className="font-medium text-slate-900">{s.text}</p><p className="mt-2 text-sm text-slate-700">{s.why_it_works}</p><div className="mt-3 flex items-center gap-3"><button onClick={() => copyText(s.text)} className="text-sm font-medium text-blue-700 hover:text-blue-800">Copy</button><button onClick={() => handleAddToWorkplan(s.text)} className="text-sm font-medium text-amber-500 hover:text-amber-600">Add to Workplan</button></div></article>)}
         </div>
       </section>}
 
-      {plan && <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-executive">
-        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">Full Workplan Builder</h2><button onClick={() => copyText(copyFull)} className="rounded-lg bg-accent px-3 py-2 text-sm text-white">Copy Full Plan</button></div>
+      {analyze && <section className="mt-8 grid gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive md:grid-cols-2">
+        <div>
+          <h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-amber-500">Analysis</h2>
+          <p className="mt-3 text-slate-900"><strong>Classification:</strong> {analyze.classification || "Not available"}</p>
+          <p><strong>Confidence:</strong> {analyze.confidence || "Not available"}</p>
+          <p className="mt-2 text-slate-800">{analyze.explanation || "No explanation provided."}</p>
+          <ul className="mt-3 list-disc pl-5 text-sm text-slate-800">{toSafeArray(analyze.missing_elements, isString).map((m) => <li key={m}>{m}</li>)}</ul>
+        </div>
+        <div>
+          <h3 className="border-b border-blue-100 pb-2 text-xl font-semibold text-blue-800">{`${analyze.clarity_type || "Planning"} Clarity Check`}</h3>
+          {Object.entries(analyze.clarity_scores || {}).map(([key, rawScore]) => {
+            const score = toSafeScore(rawScore);
+            return (
+              <div key={key} className="mt-3">
+                <div className="mb-1 flex justify-between text-sm text-slate-800"><span>{key}</span><span>{score}/5</span></div>
+                <div className="h-2 rounded-full bg-blue-100"><div className={`${score >= 4 ? "bg-gradient-to-r from-blue-600 to-amber-400" : "bg-blue-600"} h-2 rounded-full`} style={{ width: `${(score / 5) * 100}%` }} /></div>
+                <p className="text-xs text-slate-500">{toSafeArray(analyze.clarity_notes?.[key], isString).join(" ")}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>}
+
+      {savedWorkplanItems.length > 0 && <section className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Workplan Builder</h2>
+          <div className="flex gap-2">
+            <button onClick={() => setSavedWorkplanItems([])} className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-700 transition hover:bg-blue-100">Clear Plan</button>
+            <button disabled={savedWorkplanItems.length < 3 || !!loading} onClick={async () => { setLoading("plan"); try { setPlan(await postJson("/api/build-plan", { statement, savedItems: { goal: groupedSavedItems.Goal.map((item) => item.text), strategies: groupedSavedItems.Strategy.map((item) => item.text), actions: groupedSavedItems.Action.map((item) => item.text), kpis: groupedSavedItems.KPI.map((item) => item.text) } })); } catch (e) { setError((e as Error).message); } finally { setLoading(null); } }} className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white transition duration-200 hover:bg-blue-800 disabled:opacity-50">{loading === "plan" ? "Building..." : "Build Workplan"}</button>
+          </div>
+        </div>
+        {savedWorkplanItems.length < 3 && <p className="mb-3 text-sm text-slate-600">Add at least 3 items to build a more targeted workplan.</p>}
+        <div className="space-y-3">
+          <SavedItemsCard title="Goal" items={groupedSavedItems.Goal} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+          <SavedItemsCard title="Strategies" items={groupedSavedItems.Strategy} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+          <SavedItemsCard title="Actions" items={groupedSavedItems.Action} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+          <SavedItemsCard title="KPIs" items={groupedSavedItems.KPI} onRemove={(id) => setSavedWorkplanItems((current) => current.filter((item) => item.id !== id))} />
+        </div>
+      </section>}
+
+      {plan && <section className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-executive">
+        <div className="mb-4 flex items-center justify-between"><h2 className="border-b border-blue-100 pb-2 text-2xl font-semibold text-blue-800">Full Workplan Builder</h2><button onClick={() => copyText(copyFull)} className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white transition duration-200 hover:bg-blue-800">Copy Full Plan</button></div>
         <div className="space-y-3">
           <Card title="Goal" items={[plan.goal]} />
-          <Card title="Objectives" items={plan.objectives} />
-          <Card title="Strategies" items={plan.strategies} />
-          <Card title="Tactics / Actions" items={plan.tactics} />
-          <Card title="KPIs / Measurable Outcomes" items={plan.kpis} />
+          <Card title="Strategies" items={toSafeArray(plan.strategies, isString)} />
+          <Card title="Tactics / Actions" items={toSafeArray(plan.tactics, isString)} />
+          <Card title="KPIs / Metrics" items={toSafeArray(plan.kpis, isString)} />
         </div>
-        <button onClick={downloadTxt} className="mt-4 text-sm text-accent">Download as .txt</button>
+        <button onClick={downloadTxt} className="mt-4 text-sm font-medium text-blue-700 transition duration-200 hover:text-blue-800">Download as .txt</button>
       </section>}
     </main>
   );
 }
 
 function Card({ title, items }: { title: string; items: string[] }) {
-  return <section className="rounded-xl border border-slate-200 p-4"><h3 className="font-semibold">{title}</h3><ul className="mt-2 list-disc pl-5">{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
+  return <section className="rounded-xl border border-blue-200 bg-white p-4"><h3 className="border-b border-blue-100 pb-1 text-lg font-semibold text-amber-500">{title}</h3><ul className="mt-2 list-disc pl-5 text-slate-900">{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
+}
+
+function SavedItemsCard({ title, items, onRemove }: { title: string; items: SavedWorkplanItem[]; onRemove: (id: string) => void }) {
+  return <section className="rounded-xl border border-blue-200 bg-white p-4"><h3 className="border-b border-blue-100 pb-1 text-lg font-semibold text-amber-500">{title}</h3>{items.length === 0 ? <p className="mt-2 text-sm text-slate-500">No items added yet.</p> : <ul className="mt-2 space-y-2 text-slate-900">{items.map((item) => <li key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-blue-100 px-3 py-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{item.type}</p><p>{item.text}</p></div><button onClick={() => onRemove(item.id)} className="text-sm text-blue-700 hover:text-blue-800">Remove</button></li>)}</ul>}</section>;
 }
