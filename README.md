@@ -39,7 +39,7 @@ Yeah. **This app fixes that.**
 
 ---
 
-## 🏗 How It's Organized
+## How It's Organized
 
 ```
 app/
@@ -135,7 +135,7 @@ npm lint
 - Explains *why* each rewrite works
 - Detects what the user probably meant and corrects it
 
-### 📋 Workplan Building
+### Workplan Building
 - Combines multiple curated pieces into a coherent full workplan
 - Ensures alignment between goals, strategies, tactics, and KPIs
 - Requires at least 3 saved items (prevents "strategic plans" with 1 item)
@@ -190,7 +190,7 @@ All responses are validated using `parseJsonObject()` which safely extracts JSON
 
 ---
 
-## 🛠 Development Notes
+## Development Notes
 
 ### Type Safety
 - Full TypeScript strict mode
