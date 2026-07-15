@@ -1,4 +1,4 @@
-# 📊 Strategic Clarity: Decode Strategic Plans
+# Strategic Clarity: Decode Strategic Plans
 
 > **s-t-r-a-t-e-g-y...** an app to help users understand the difference between a goal, strategy, objective, tactic, KPI, and that weird vague thing your boss said in the meeting.
 
@@ -6,7 +6,7 @@ Supports intentional thinking and brings clarity to the work plan process. *(Bec
 
 ---
 
-## 🤔 The Problem We're Solving
+## The Problem We're Solving
 
 You know that meeting where someone says something like:
 
@@ -22,7 +22,7 @@ Or your strategic plan reads like this:
 
 Yeah. **This app fixes that.**
 
-## ✨ What It Does
+## What It Does
 
 **Strategic Clarity** is a web app that uses OpenAI's GPT-4 to transform vague planning statements into structured, actionable work plans. It helps you:
 
@@ -69,7 +69,7 @@ Each API route uses **OpenAI's structured JSON output** (via `gpt-4.1-mini`) to 
 
 ---
 
-## 🚀 How to Run It
+## How to Run It
 
 ### Prerequisites
 - Node.js 18+
@@ -110,7 +110,7 @@ npm lint
 
 ---
 
-## 📦 Tech Stack
+## Tech Stack
 
 - **Language:** TypeScript
 - **Framework:** Next.js 16 + React 19
@@ -121,15 +121,15 @@ npm lint
 
 ---
 
-## 🎯 Key Features
+## Key Features
 
-### ✅ Statement Analysis
+### Statement Analysis
 - Classifies statements into: Goal, Strategy, Tactic/Action, KPI/Metric, or Too Vague
 - Provides type-specific clarity scoring (0–5 scale)
 - Identifies missing elements and possible confusions
 - Includes supportive, coaching-style feedback notes
 
-### 🎨 Intelligent Rewriting
+### Intelligent Rewriting
 - Rewrites statements for their intended purpose
 - Provides 3+ alternative phrasings
 - Explains *why* each rewrite works
@@ -141,12 +141,12 @@ npm lint
 - Requires at least 3 saved items (prevents "strategic plans" with 1 item)
 - Generates balanced workplans with all four pillars
 
-### 💾 Export Magic
+### Export Magic
 - Download entire clarity session as a clean .txt file
 - Includes analysis, rewrite suggestions, and final workplan
 - Great for sharing with stakeholders or your confused team
 
-### 🎲 Sample Statements
+### Sample Statements
 Pre-loaded examples to get started:
 - _"Become the #1 seller in our industry"_
 - _"Leverage marketing data to better target ages 25–35"_
@@ -156,7 +156,7 @@ Pre-loaded examples to get started:
 
 ---
 
-## 🧠 The AI Prompting Strategy
+## The AI Prompting Strategy
 
 Each API endpoint uses **structured JSON schemas** with OpenAI's `gpt-4.1-mini`:
 
@@ -179,7 +179,7 @@ All responses are validated using `parseJsonObject()` which safely extracts JSON
 
 ---
 
-## 🎪 UI Highlights
+## UI Highlights
 
 - **Blue & Amber Color Scheme** — Strategic clarity, with a dash of warmth
 - **Rounded Cards & Shadow Effects** — Executive, but approachable
@@ -217,21 +217,13 @@ Each operation sets `loading` to its type, preventing concurrent requests and en
 
 ---
 
-## 🌐 Live Demo
+## Live Demo
 
 Check it out: **[decode-strategic-plans-beta.vercel.app](https://decode-strategic-plans-beta.vercel.app)**
 
 ---
 
-## 📚 Try These Questions
-
-- **"Why is 'Improve internal communication' not a good goal?"** — Paste it and see the analysis highlight its vagueness and missing specificity.
-- **"Can I rewrite 'Launch quarterly manager training' as a KPI?"** — Sure! See how the AI forces it into a measurable statement (and whether it makes sense).
-- **"How do I build a full workplan?"** — Add at least 3 saved items across different types, then hit "Build Plan." The AI will tie them together into a coherent strategy.
-
----
-
-## 🤝 Contributing
+## Contributing
 
 This is a single-developer passion project, but if you find bugs or have ideas:
 1. Open an issue
@@ -240,18 +232,18 @@ This is a single-developer passion project, but if you find bugs or have ideas:
 
 ---
 
-## 📄 License
+## License
 
 No license specified. Do what you want, but maybe don't claim you invented strategic planning. (That honor belongs to Sun Tzu, and also maybe confused board members.)
 
 ---
 
-## 🎓 Inspiration
+## Inspiration
 
 Built by someone who sat through too many meetings where people confused "goals," "strategies," and "tactics," and decided the best response was to build an AI that fixes vague planning language instead of just nodding politely.
 
 ---
 
-**Happy Planning! 🚀**
+**Happy Planning! **
 
 *May your strategies be clear, your tactics executable, and your KPIs measurable.*
