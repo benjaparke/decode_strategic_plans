@@ -2,8 +2,7 @@
 
 > **s-t-r-a-t-e-g-y...** an app to help users understand the difference between a goal, strategy, objective, tactic, KPI, and that weird vague thing your boss said in the meeting.
 
-Supports intentional thinking and brings clarity to the work plan process. *(Because some folks can't even spell strategic.)*
-
+Supports intentional thinking and brings clarity to the work plan process.
 ---
 
 ## The Problem We're Solving
